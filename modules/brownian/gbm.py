@@ -47,4 +47,7 @@ class GeometricBrownianMotion:
     def simulate_paths(self, n_paths: int) -> np.ndarray:
         if not isinstance(n_paths, int) or n_paths < 1:
             raise ValueError(f"n_paths must be a positive int, got {n_paths!r}")
-        return np.array([self.simulate_path() for _ in range(n_paths)])
+        p = self.params
+        increments = np.random.normal(0, np.sqrt(self.dt), (n_paths, self.params.n_steps))
+        bm_paths = np.concatenate([np.zeros((n_paths, 1)), np.cumsum(increments, axis=1)], axis=1)
+        return p.x0 * np.exp((p.mu - 0.5 * p.sigma ** 2) * self.times + p.sigma * bm_paths)
