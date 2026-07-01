@@ -1,0 +1,49 @@
+from dataclasses import dataclass
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+import pandas as pd
+import yfinance as yf
+
+from market_data.errors import TickerParameterError, TickerNotFoundError, InsufficientDataError
+
+max_attempts = 3
+
+@dataclass(frozen=True)
+class TickerParams:
+    ticker: str
+    x0: float
+    mu: float
+    sigma: float
+
+    def __post_init__(self) -> None:
+        if self.x0 <= 0:
+            raise TickerParameterError(f"x0 must be positive, got {self.x0}")
+        if self.sigma <= 0:
+            raise TickerParameterError(f"sigma must be positive, got {self.sigma}")
+
+
+@retry(
+    retry=retry_if_exception_type((ConnectionError, TimeoutError)),
+    stop=stop_after_attempt(max_attempts),
+    wait=wait_exponential(multiplier=1, min=1, max=8),
+)
+def fetch_price_history(ticker: str, period: str = "1y") -> pd.DataFrame:
+    hist = yf.Ticker(ticker).history(period=period)
+    if hist.empty:
+        raise TickerNotFoundError(f"No data found for {ticker}")
+    if len(hist) < 30:
+        raise InsufficientDataError(f"Only {len(hist)} data points for {ticker}, need at least 30")
+    return hist
+
+def compute_gbm_params(ticker: str, hist: pd.DataFrame) -> TickerParams:
+    returns = hist["Close"].pct_change().dropna()
+    return TickerParams(
+        ticker=ticker,
+        x0=float(hist["Close"].iloc[-1]),
+        mu=float(returns.mean() * 252),
+        sigma=float(returns.std() * (252 ** 0.5)),
+    )
+
+def estimate_ticker_params(ticker: str, period: str = "1y") -> TickerParams:
+    hist = fetch_price_history(ticker, period)
+    return compute_gbm_params(ticker, hist)
