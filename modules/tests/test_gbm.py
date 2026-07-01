@@ -105,7 +105,6 @@ def test_simulate_paths_invalid_n_paths_negative(default_gbm):
         default_gbm.simulate_paths(n_paths=-1)
 
 
-
 def test_simulate_path_raises_on_non_finite(default_gbm):
     with patch("brownian.gbm.np.exp", return_value=np.array([np.inf] * 101)):
         with pytest.raises(GBMNumericalError):
