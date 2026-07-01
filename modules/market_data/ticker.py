@@ -1,10 +1,11 @@
 from dataclasses import dataclass
+
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from market_data.errors import TickerParameterError, TickerNotFoundError, InsufficientDataError
 
 import pandas as pd
 import yfinance as yf
 
-from market_data.errors import TickerParameterError, TickerNotFoundError, InsufficientDataError
 
 max_attempts = 3
 
@@ -26,6 +27,7 @@ class TickerParams:
     retry=retry_if_exception_type((ConnectionError, TimeoutError)),
     stop=stop_after_attempt(max_attempts),
     wait=wait_exponential(multiplier=1, min=1, max=8),
+    reraise=True
 )
 def fetch_price_history(ticker: str, period: str = "1y") -> pd.DataFrame:
     hist = yf.Ticker(ticker).history(period=period)
@@ -47,3 +49,5 @@ def compute_gbm_params(ticker: str, hist: pd.DataFrame) -> TickerParams:
 def estimate_ticker_params(ticker: str, period: str = "1y") -> TickerParams:
     hist = fetch_price_history(ticker, period)
     return compute_gbm_params(ticker, hist)
+
+

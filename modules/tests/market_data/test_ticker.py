@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch
 import pandas as pd
 
-from market_data.ticker import TickerParams, fetch_price_history, compute_gbm_params
+from market_data.ticker import TickerParams, fetch_price_history, compute_gbm_params, estimate_ticker_params
 from market_data.errors import (
     TickerParameterError,
     TickerNotFoundError,
@@ -45,17 +45,18 @@ def test_allows_negative_mu():
     assert params.mu == -0.05
 
 
+@pytest.mark.parametrize(
+    "history, expected_exception",
+    [
+        (pd.DataFrame(), TickerNotFoundError),
+        (pd.DataFrame({"Close": [100.0] * 10}), InsufficientDataError),
+        (pd.DataFrame({"Close": [100.0] * 29}), InsufficientDataError),
+    ],
+)
 @patch("market_data.ticker.yf.Ticker")
-def test_fetch_raises_when_empty(mock_ticker):
-    mock_ticker.return_value.history.return_value = pd.DataFrame()
-    with pytest.raises(TickerNotFoundError):
-        fetch_price_history("FAKETICKER")
-
-
-@patch("market_data.ticker.yf.Ticker")
-def test_fetch_raises_when_insufficient_data(mock_ticker):
-    mock_ticker.return_value.history.return_value = pd.DataFrame({"Close": [100.0] * 10})
-    with pytest.raises(InsufficientDataError):
+def test_fetch_raises_on_bad_data(mock_ticker, history, expected_exception):
+    mock_ticker.return_value.history.return_value = history
+    with pytest.raises(expected_exception):
         fetch_price_history("AAPL")
 
 
@@ -93,3 +94,45 @@ def test_fetch_does_not_retry_on_ticker_not_found(mock_ticker):
     with pytest.raises(TickerNotFoundError):
         fetch_price_history("FAKETICKER")
     assert mock_ticker.return_value.history.call_count == 1
+
+
+@patch("market_data.ticker.yf.Ticker")
+def test_fetch_gives_up_after_max_attempts(mock_ticker):
+   mock_ticker.return_value.history.side_effect = ConnectionError
+   with pytest.raises(ConnectionError):
+       fetch_price_history("AAPL")
+   assert mock_ticker.return_value.history.call_count == 3
+
+
+@patch("market_data.ticker.yf.Ticker")
+def test_fetch_does_not_retry_on_insufficient_data(mock_ticker):
+   mock_ticker.return_value.history.return_value = pd.DataFrame({"Close": [100.0] * 10})
+   with pytest.raises(InsufficientDataError):
+       fetch_price_history("AAPL")
+   assert mock_ticker.return_value.history.call_count == 1
+
+
+@patch("market_data.ticker.yf.Ticker")
+def test_estimate_ticker_params_end_to_end(mock_ticker):
+   prices = [100.0 + (i % 3) for i in range(35)]
+   mock_ticker.return_value.history.return_value = pd.DataFrame({"Close": prices})
+   result = estimate_ticker_params("AAPL")
+   assert isinstance(result, TickerParams)
+   assert result.ticker == "AAPL"
+   assert result.x0 == prices[-1]
+   assert result.sigma > 0.0
+
+
+def test_compute_gbm_params_known_values():
+    prices = [100.0, 101.0, 99.0, 102.0, 98.0, 103.0, 97.0, 104.0, 96.0, 105.0]
+    df = pd.DataFrame({"Close": prices})
+
+    returns = pd.Series(prices).pct_change().dropna()
+    expected_mu = returns.mean() * 252
+    expected_sigma = returns.std() * (252 ** 0.5)
+
+    params = compute_gbm_params("AAPL", df)
+
+    assert params.x0 == pytest.approx(105.0)
+    assert params.mu == pytest.approx(expected_mu)
+    assert params.sigma == pytest.approx(expected_sigma)
