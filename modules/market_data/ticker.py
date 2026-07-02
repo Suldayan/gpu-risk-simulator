@@ -8,6 +8,7 @@ import yfinance as yf
 
 
 max_attempts = 3
+default_period = "1y"
 
 @dataclass(frozen=True)
 class TickerParams:
@@ -29,7 +30,7 @@ class TickerParams:
     wait=wait_exponential(multiplier=1, min=1, max=8),
     reraise=True
 )
-def fetch_price_history(ticker: str, period: str = "1y") -> pd.DataFrame:
+def fetch_price_history(ticker: str, period: str = default_period) -> pd.DataFrame:
     hist = yf.Ticker(ticker).history(period=period)
     if hist.empty:
         raise TickerNotFoundError(f"No data found for {ticker}")
@@ -46,7 +47,7 @@ def compute_gbm_params(ticker: str, hist: pd.DataFrame) -> TickerParams:
         sigma=float(returns.std() * (252 ** 0.5)),
     )
 
-def estimate_ticker_params(ticker: str, period: str = "1y") -> TickerParams:
+def estimate_ticker_params(ticker: str, period: str = default_period) -> TickerParams:
     hist = fetch_price_history(ticker, period)
     return compute_gbm_params(ticker, hist)
 
