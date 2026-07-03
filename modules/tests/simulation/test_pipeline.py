@@ -12,12 +12,11 @@ from simulation.pipeline import simulate_from_ticker
 @patch("simulation.pipeline.estimate_ticker_params")
 def test_simulate_from_ticker_happy_path(mock_estimate):
     mock_estimate.return_value = TickerParams(ticker="AAPL", x0=100.0, mu=0.05, sigma=0.2)
+    result = simulate_from_ticker("AAPL", T=1.0, n_steps=252, n_paths=50, period="1y")
 
-    paths = simulate_from_ticker("AAPL", T=1.0, n_steps=252, n_paths=50, period="1y")
-
-    assert paths.shape == (50, 253)
-    assert np.all(np.isfinite(paths))
-    assert np.all(paths[:, 0] == 100.0)
+    assert result.paths.shape == (50, 253)
+    assert np.all(np.isfinite(result.paths))
+    assert np.all(result.paths[:, 0] == 100.0)
 
 
 @patch("simulation.pipeline.estimate_ticker_params")
