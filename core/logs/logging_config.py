@@ -1,5 +1,3 @@
-"""Project-wide logging configuration."""
-
 import logging
 
 
