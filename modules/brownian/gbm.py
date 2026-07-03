@@ -1,8 +1,11 @@
 import numpy as np
+import logging
+import time
 
 from dataclasses import dataclass
 from brownian.errors import GBMParameterError, GBMNumericalError  # add GBMNumericalError
 
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class GBMParams:
@@ -28,6 +31,7 @@ class GeometricBrownianMotion:
         self.params = params
         self.dt = params.T / params.n_steps
         self.times = np.linspace(0, params.T, params.n_steps + 1)
+        logger.debug("GBM initialized: T=%.2f n_steps=%d dt=%.6f", params.T, params.n_steps, self.dt)
 
     def _brownian_path(self) -> np.ndarray:
         increments = np.random.normal(0, np.sqrt(self.dt), self.params.n_steps)
@@ -47,7 +51,12 @@ class GeometricBrownianMotion:
     def simulate_paths(self, n_paths: int) -> np.ndarray:
         if not isinstance(n_paths, int) or n_paths < 1:
             raise ValueError(f"n_paths must be a positive int, got {n_paths!r}")
+
+        start = time.perf_counter()
         p = self.params
         increments = np.random.normal(0, np.sqrt(self.dt), (n_paths, self.params.n_steps))
         bm_paths = np.concatenate([np.zeros((n_paths, 1)), np.cumsum(increments, axis=1)], axis=1)
+
+        elapsed = time.perf_counter() - start
+        logger.info("Simulated %d paths x %d steps in %.3fs", n_paths, self.params.n_steps, elapsed)
         return p.x0 * np.exp((p.mu - 0.5 * p.sigma ** 2) * self.times + p.sigma * bm_paths)
