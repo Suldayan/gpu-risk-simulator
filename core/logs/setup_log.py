@@ -26,3 +26,4 @@ def setup_logging(level: int = logging.INFO, formatter: logging.Formatter | None
 
     logging.getLogger("yfinance").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("peewee").setLevel(logging.WARNING)
