@@ -7,9 +7,9 @@ from logs.logging_config import setup_logging
 logger = logging.getLogger(__name__)
 
 
-def benchmark(n_paths: int, n_steps: int, n_runs: int = 5, warmup: int = 1) -> None:
+def benchmark(n_paths: int, n_steps: int, engine: str, n_runs: int = 5, warmup: int = 1) -> None:
     params = GBMParams(x0=100.0, mu=0.05, sigma=0.2, T=1.0, n_steps=n_steps)
-    gbm = GeometricBrownianMotion(params)
+    gbm = GeometricBrownianMotion(params, engine=engine, seed=42)
 
     for _ in range(warmup):
         gbm.simulate_paths(n_paths)
@@ -22,7 +22,7 @@ def benchmark(n_paths: int, n_steps: int, n_runs: int = 5, warmup: int = 1) -> N
 
     avg = sum(times) / len(times)
     print(
-        f"n_paths={n_paths:>8,} | n_steps={n_steps:>5} | "
+        f"engine={engine:>6} | n_paths={n_paths:>8,} | n_steps={n_steps:>5} | "
         f"avg={avg:.4f}s | min={min(times):.4f}s | max={max(times):.4f}s"
     )
 
@@ -36,12 +36,15 @@ def main() -> None:
         (100_000, 252),
         (10_000, 1_000),
         (100_000, 1_000),
+        (500_000, 252),
+        (1_000_000, 252),
     ]
 
-    print("GBM CPU Benchmark (numpy, single-threaded)")
-    print("-" * 70)
+    print("GBM Benchmark: host vs device")
+    print("-" * 80)
     for n_paths, n_steps in configs:
-        benchmark(n_paths, n_steps)
+        benchmark(n_paths, n_steps, engine="host")
+        benchmark(n_paths, n_steps, engine="device")
         time.sleep(2)
 
 if __name__ == "__main__":

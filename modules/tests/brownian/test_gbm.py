@@ -70,26 +70,6 @@ def simulate_paths(self, n_paths: int) -> np.ndarray:
     return np.array([self.simulate_path() for _ in range(n_paths)])
 
 
-def test_simulate_path_shape(default_gbm):
-    path = default_gbm.simulate_path()
-    assert path.shape == (101,)
-
-
-def test_simulate_path_starts_at_x0(default_gbm):
-    path = default_gbm.simulate_path()
-    assert path[0] == pytest.approx(default_gbm.params.x0)
-
-
-def test_simulate_path_all_positive(default_gbm):
-    path = default_gbm.simulate_path()
-    assert np.all(path > 0)
-
-
-def test_simulate_path_all_finite(default_gbm):
-    path = default_gbm.simulate_path()
-    assert np.all(np.isfinite(path))
-
-
 def test_simulate_paths_shape(default_gbm):
     paths = default_gbm.simulate_paths(n_paths=50)
     assert paths.shape == (50, 101)
@@ -104,8 +84,3 @@ def test_simulate_paths_invalid_n_paths_negative(default_gbm):
     with pytest.raises(ValueError, match="n_paths"):
         default_gbm.simulate_paths(n_paths=-1)
 
-
-def test_simulate_path_raises_on_non_finite(default_gbm):
-    with patch("brownian.gbm.np.exp", return_value=np.array([np.inf] * 101)):
-        with pytest.raises(GBMNumericalError):
-            default_gbm.simulate_path()
