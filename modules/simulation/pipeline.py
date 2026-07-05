@@ -1,13 +1,13 @@
 import numpy as np
 import logging
 
+from brownian.execution import create_engine
 from brownian.gbm import GeometricBrownianMotion, GBMParams
 from brownian.errors import GBMParameterError, GBMNumericalError
 from market_data.ticker import estimate_ticker_params
 from market_data.errors import TickerNotFoundError, InsufficientDataError
-from metrics.risk import RiskMetrics
+from metrics.risk import RiskMetrics, compute_risk_metrics
 from simulation.errors import SimulationError
-from metrics.risk import compute_risk_metrics
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -24,9 +24,13 @@ def simulate_from_ticker(
     T: float,
     n_steps: int,
     n_paths: int,
-    period: str = "1y"
+    period: str = "1y",
+    engine: str = "auto",
 ) -> SimulationResult:
-    logger.info("Starting pipeline for %s (T=%.2f, n_steps=%d, n_paths=%d)", ticker, T, n_steps, n_paths)
+    logger.info(
+        "Starting pipeline for %s (T=%.2f, n_steps=%d, n_paths=%d, engine=%s)",
+        ticker, T, n_steps, n_paths, engine,
+    )
 
     try:
         tp = estimate_ticker_params(ticker=ticker, period=period)
@@ -36,7 +40,9 @@ def simulate_from_ticker(
 
     try:
         gbm_params = GBMParams(x0=tp.x0, mu=tp.mu, sigma=tp.sigma, T=T, n_steps=n_steps)
-        gbm = GeometricBrownianMotion(gbm_params)
+        selected_engine = create_engine(kind=engine, n_paths=n_paths)
+
+        gbm = GeometricBrownianMotion(gbm_params, engine=selected_engine)
         paths = gbm.simulate_paths(n_paths)
         metrics = compute_risk_metrics(paths, x0=tp.x0)
     except (GBMParameterError, GBMNumericalError) as e:
