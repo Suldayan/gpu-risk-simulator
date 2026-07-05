@@ -1,9 +1,8 @@
-import pytest
 import numpy as np
+import pytest
 
-from unittest.mock import patch
+from brownian.errors import GBMParameterError
 from brownian.gbm import GBMParams, GeometricBrownianMotion
-from brownian.errors import GBMParameterError, GBMNumericalError
 
 
 @pytest.fixture

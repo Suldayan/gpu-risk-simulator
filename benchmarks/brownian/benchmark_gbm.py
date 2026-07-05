@@ -36,12 +36,14 @@ def main() -> None:
         (100_000, 252),
         (10_000, 1_000),
         (100_000, 1_000),
-        (500_000, 252),
-        (1_000_000, 252),
     ]
 
     print("GBM Benchmark: host vs device")
     print("-" * 80)
+    for n_paths in [1, 10, 100, 1_000]:
+        benchmark(n_paths, 252, engine="host")
+        benchmark(n_paths, 252, engine="device")
+
     for n_paths, n_steps in configs:
         benchmark(n_paths, n_steps, engine="host")
         benchmark(n_paths, n_steps, engine="device")
