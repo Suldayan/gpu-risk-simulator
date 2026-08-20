@@ -5,8 +5,6 @@ from dataclasses import dataclass
 from portfolio.errors import InvalidHoldingError, InvalidPortfolioError
 
 
-# portfolio/models.py — extending what you already have
-
 @dataclass(frozen=True)
 class Holding:
     """A user-declared position: some shares of one ticker.
@@ -39,8 +37,9 @@ class Holding:
 
 @dataclass(frozen=True)
 class HoldingSnapshot:
-    """A Holding enriched with a current market price (this is your
-    'StockSummary' — ticker + shares + investment amount + live value)."""
+    """A Holding enriched with a current market price
+    (StockSummary — ticker + shares + investment amount + live value).
+    """
     holding: Holding
     current_price: float
 

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 from market_data.errors import TickerParameterError, TickerNotFoundError, InsufficientDataError
+from cachetools import cached, TTLCache
 
 import logging
 import pandas as pd
@@ -9,8 +10,11 @@ import yfinance as yf
 
 logger = logging.getLogger(__name__)
 
+# cache per (ticker, period) combination, for 5 minutes
+_price_history_cache = TTLCache(maxsize=256, ttl=300)
 max_attempts = 3
 default_period = "1y"
+
 
 @dataclass(frozen=True)
 class TickerParams:
@@ -26,6 +30,7 @@ class TickerParams:
             raise TickerParameterError(f"sigma must be positive, got {self.sigma}")
 
 
+@cached(cache=_price_history_cache)
 @retry(
     retry=retry_if_exception_type((ConnectionError, TimeoutError)),
     stop=stop_after_attempt(max_attempts),
