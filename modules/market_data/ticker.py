@@ -30,14 +30,25 @@ class TickerParams:
             raise TickerParameterError(f"sigma must be positive, got {self.sigma}")
 
 
-@cached(cache=_price_history_cache)
+def fetch_price_history(ticker: str, period: str = default_period) -> pd.DataFrame:
+    cache_key = (ticker, period)
+
+    if cache_key in _price_history_cache:
+        logger.debug("Cache hit for %s (period=%s)", ticker, period)
+        return _price_history_cache[cache_key]
+
+    logger.debug("Cache miss for %s (period=%s) — fetching", ticker, period)
+    hist = _download_price_history(ticker, period)
+    _price_history_cache[cache_key] = hist
+    return hist
+
 @retry(
     retry=retry_if_exception_type((ConnectionError, TimeoutError)),
     stop=stop_after_attempt(max_attempts),
     wait=wait_exponential(multiplier=1, min=1, max=8),
-    reraise=True
+    reraise=True,
 )
-def fetch_price_history(ticker: str, period: str = default_period) -> pd.DataFrame:
+def _download_price_history(ticker: str, period: str) -> pd.DataFrame:
     logger.debug("Fetching history for %s (period=%s)", ticker, period)
     hist = yf.Ticker(ticker).history(period=period)
 
