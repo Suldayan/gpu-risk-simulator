@@ -2,7 +2,7 @@ import time
 import logging
 
 from brownian.gbm import GeometricBrownianMotion, GBMParams
-from logs.logging_config import setup_logging
+from logging import setup_logging
 
 logger = logging.getLogger(__name__)
 
