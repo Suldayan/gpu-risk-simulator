@@ -1,14 +1,13 @@
 """Fetches and aligns historical price data across a portfolio's holdings."""
 
-import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 
-from market_data.ticker import fetch_price_history
+import logging
 from market_data.errors import TickerNotFoundError, InsufficientDataError
+from market_data.ticker import fetch_price_history
 from portfolio.errors import PortfolioError
-from portfolio.models import Portfolio
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +59,8 @@ def _validate_aligned_history(aligned: pd.DataFrame, tickers: tuple[str, ...]) -
         )
 
 
-def fetch_portfolio_history(
-    portfolio: Portfolio, period: str = "1y", max_workers: int = DEFAULT_MAX_WORKERS
+def fetch_aligned_history(
+    tickers: tuple[str, ...], period: str = "1y", max_workers: int = DEFAULT_MAX_WORKERS
 ) -> pd.DataFrame:
     """Fetch aligned closing-price history for every ticker in a portfolio.
 
@@ -76,13 +75,13 @@ def fetch_portfolio_history(
         If any ticker's fetch fails, or the aligned result has too few
         overlapping dates to be useful.
     """
-    logger.info("Fetching aligned history for portfolio: %s (period=%s)", portfolio.tickers, period)
+    logger.info("Fetching aligned history for portfolio: %s (period=%s)", tickers, period)
 
-    histories = _fetch_all_histories(portfolio.tickers, period, max_workers)
-    aligned = _align_histories(histories, portfolio.tickers)
-    _validate_aligned_history(aligned, portfolio.tickers)
+    histories = _fetch_all_histories(tickers, period, max_workers)
+    aligned = _align_histories(histories, tickers)
+    _validate_aligned_history(aligned, tickers)
 
     logger.info(
-        "Aligned history: %d overlapping dates across %d tickers", len(aligned), len(portfolio.tickers)
+        "Aligned history: %d overlapping dates across %d tickers", len(aligned), len(tickers)
     )
     return aligned

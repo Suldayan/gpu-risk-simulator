@@ -1,66 +1,17 @@
-"""Geometric Brownian Motion simulation for asset price paths."""
-
-import logging
 import time
-from dataclasses import dataclass
 
 import numpy as np
-import numpy.typing as npt
 
-from brownian.errors import GBMNumericalError, GBMParameterError
-from brownian.execution import ExecutionEngine, HostEngine, create_engine
+import logging
+from gpu_risk_simulator.brownian.errors import GBMNumericalError
+from gpu_risk_simulator.brownian.execution import ExecutionEngine, HostEngine, create_engine
+from gpu_risk_simulator.brownian.models import GBMParams
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
-class GBMParams:
-    """Parameters for a Geometric Brownian Motion simulation.
-
-    Attributes
-    ----------
-    x0 : float
-        Initial asset price. Must be positive.
-    mu : float
-        Annualized drift (expected return).
-    sigma : float
-        Annualized volatility. Must be positive.
-    T : float
-        Time horizon, in years. Must be positive.
-    n_steps : int
-        Number of discrete time steps. Must be at least 1.
-    """
-
-    x0: float
-    mu: float
-    sigma: float
-    T: float
-    n_steps: int
-
-    def __post_init__(self) -> None:
-        if self.x0 <= 0:
-            raise GBMParameterError(f"x0 must be positive, got {self.x0}")
-        if self.sigma <= 0:
-            raise GBMParameterError(f"sigma must be positive, got {self.sigma}")
-        if self.T <= 0:
-            raise GBMParameterError(f"T must be positive, got {self.T}")
-        if self.n_steps < 1:
-            raise GBMParameterError(f"n_steps must be >= 1, got {self.n_steps}")
-
-
 class GeometricBrownianMotion:
-    """Simulates asset price paths under Geometric Brownian Motion.
-
-    The execution engine (CPU/NumPy by default, GPU/CuPy optionally) is
-    injected at construction time — either as an `ExecutionEngine` instance,
-    or as a string ("host" / "device") resolved via `create_engine`.
-
-    Internal scratch arrays are lazily allocated and reused across calls to
-    `simulate_paths` when `n_paths` is unchanged. `simulate_paths(...,
-    copy_result=False)` returns a view into buffers that are overwritten on
-    the next call — only use it when the result is fully consumed before
-    the next call.
-    """
+    """Simulates correlated GBM price paths for any number of assets."""
 
     def __init__(
         self,
@@ -69,75 +20,93 @@ class GeometricBrownianMotion:
         seed: int | None = None,
     ) -> None:
         self.params = params
+        self._n_assets = len(params.tickers)
 
         if isinstance(engine, str):
             self.engine: ExecutionEngine = create_engine(kind=engine, seed=seed)
         else:
             self.engine = engine or HostEngine(seed=seed)
 
-        self.dt: float = params.T / params.n_steps
-        self.times: npt.NDArray[np.float64] = self.engine.linspace(0, params.T, params.n_steps + 1)
+        self.dt = params.T / params.n_steps
+        self.times = self.engine.linspace(0, params.T, params.n_steps + 1)
 
-        self._buffer_n_paths: int | None = None
-        self._increments: npt.NDArray[np.float64] | None = None
-        self._bm_paths: npt.NDArray[np.float64] | None = None
-        self._paths_buffer: npt.NDArray[np.float64] | None = None
+        self._drift_coeffs = np.array(params.mu) - 0.5 * np.array(params.sigma) ** 2
+        self._sigmas = np.array(params.sigma)
+        self._x0s = np.array(params.x0)
 
-        logger.debug(
-            "GBM initialized: T=%.4f n_steps=%d dt=%.6f engine=%s",
-            params.T, params.n_steps, self.dt, type(self.engine).__name__,
-        )
+        self._L = np.linalg.cholesky(params.correlation) if self._n_assets > 1 else None
 
-    def _ensure_buffers(self, n_paths: int) -> None:
+        self._buffer_n_paths = None
+        self._shocks = None
+        self._bm = None
+        self._paths = None
+
+    def _ensure_buffers(self, n_paths: int):
         if self._buffer_n_paths == n_paths:
             return
 
         n_steps = self.params.n_steps
-        self._increments = self.engine.empty((n_paths, n_steps))
-        self._bm_paths = self.engine.empty((n_paths, n_steps + 1))
-        self._paths_buffer = self.engine.empty((n_paths, n_steps + 1))
+        a = self._n_assets
+
+        self._shocks = self.engine.empty((n_paths, n_steps, a))
+        self._bm = self.engine.empty((n_paths, n_steps + 1, a))
+        self._paths = self.engine.empty((n_paths, n_steps + 1, a))
         self._buffer_n_paths = n_paths
 
-        logger.debug("Allocated buffers for n_paths=%d, n_steps=%d", n_paths, n_steps)
+    def _apply_correlation(self):
+        if self._L is None:
+            return
 
-    def _check_finite(self, paths: npt.NDArray[np.float64]) -> None:
-        if not self.engine.all_finite(paths):
+        shocks_host = self.engine.to_host(self._shocks)
+        correlated = shocks_host @ self._L.T
+
+        if isinstance(self.engine, HostEngine):
+            self._shocks = correlated
+        else:
+            import cupy as cp
+            self._shocks = cp.asarray(correlated)
+
+    def _check_finite(self, arr):
+        if not self.engine.all_finite(arr):
             p = self.params
             raise GBMNumericalError(
-                f"Simulated paths contain non-finite values. "
-                f"Consider reducing mu={p.mu}, sigma={p.sigma}, or T={p.T}."
+                f"Non-finite values detected. "
+                f"mu={p.mu}, sigma={p.sigma}, T={p.T}"
             )
 
-    def simulate_paths(self, n_paths: int, copy_result: bool = True) -> npt.NDArray[np.float64]:
-        """Simulate multiple GBM price paths in a single vectorized call.
-
-        Always returns a plain NumPy array, regardless of engine — GPU
-        results are copied off-device automatically via `engine.to_host`.
-        """
+    def simulate_paths(self, n_paths: int, copy_result: bool = True):
         if not isinstance(n_paths, int) or n_paths < 1:
-            raise ValueError(f"n_paths must be a positive int, got {n_paths!r}")
+            raise ValueError(f"n_paths must be positive, got {n_paths!r}")
 
         start = time.perf_counter()
         self._ensure_buffers(n_paths)
         p = self.params
 
-        self.engine.standard_normal((n_paths, p.n_steps), out=self._increments)
-        self._increments *= np.sqrt(self.dt)
+        self.engine.standard_normal(
+            (n_paths, p.n_steps, self._n_assets), out=self._shocks
+        )
+        self._shocks *= np.sqrt(self.dt)
 
-        self._bm_paths[:, 0] = 0.0
-        self.engine.cumsum(self._increments, axis=1, out=self._bm_paths[:, 1:])
+        self._apply_correlation()
 
-        drift_term = (p.mu - 0.5 * p.sigma**2) * self.times + p.sigma * self._bm_paths
-        self.engine.exp(drift_term, out=self._paths_buffer)
-        self._paths_buffer *= p.x0
+        self._bm[:, 0, :] = 0.0
+        self.engine.cumsum(self._shocks, axis=1, out=self._bm[:, 1:, :])
 
-        self._check_finite(self._paths_buffer)
+        for i in range(self._n_assets):
+            drift = self._drift_coeffs[i] * self.times
+            diffusion = self._sigmas[i] * self._bm[:, :, i]
+            temp = drift + diffusion
+            self.engine.exp(temp, out=temp)
+            self._paths[:, :, i] = temp * self._x0s[i]
+
+        self._check_finite(self._paths)
 
         elapsed = time.perf_counter() - start
         logger.info(
-            "Simulated %d paths x %d steps in %.4fs (engine=%s, copy_result=%s)",
-            n_paths, p.n_steps, elapsed, type(self.engine).__name__, copy_result,
+            "%d assets x %d paths x %d steps in %.4fs",
+            self._n_assets, n_paths, p.n_steps, elapsed,
         )
 
-        result = self._paths_buffer.copy() if copy_result else self._paths_buffer
-        return self.engine.to_host(result)
+        result = self._paths.copy() if copy_result else self._paths
+        result = self.engine.to_host(result)
+        return np.transpose(result, (2, 0, 1))

@@ -1,14 +1,14 @@
-import numpy as np
-import logging
-
-from brownian.execution import create_engine
-from brownian.gbm import GeometricBrownianMotion, GBMParams
-from brownian.errors import GBMParameterError, GBMNumericalError
-from market_data.ticker import estimate_ticker_params
-from market_data.errors import TickerNotFoundError, InsufficientDataError
-from metrics.risk import RiskMetrics, compute_risk_metrics
-from simulation.errors import SimulationError
 from dataclasses import dataclass
+
+import numpy as np
+import pandas as pd
+
+import logging
+from gpu_risk_simulator.brownian.errors import GBMParameterError, GBMNumericalError
+from gpu_risk_simulator.brownian.gbm import GeometricBrownianMotion
+from gpu_risk_simulator.brownian.models import GBMParams, build_gbm_params
+from gpu_risk_simulator.portfolio.fetcher import fetch_aligned_history
+from gpu_risk_simulator.simulation.errors import SimulationError
 
 logger = logging.getLogger(__name__)
 
@@ -16,38 +16,57 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class SimulationResult:
     paths: np.ndarray
-    metrics: RiskMetrics
+    params: GBMParams
+
+def _correlate(aligned: pd.DataFrame) -> np.ndarray:
+    """Compute correlation matrix from daily returns."""
+    returns = aligned.pct_change().dropna()
+    return returns.corr().values
 
 
-def simulate_from_ticker(
-    ticker: str,
+def _build_params(
+    tickers: tuple[str, ...],
+    aligned: pd.DataFrame,
+    correlation: np.ndarray,
+    T: float,
+    n_steps: int,
+) -> GBMParams:
+    """Estimate GBM parameters from aligned price history."""
+    try:
+        return build_gbm_params(
+            tickers=tickers,
+            aligned_history=aligned,
+            correlation=correlation,
+            T=T,
+            n_steps=n_steps,
+        )
+    except Exception as e:
+        raise SimulationError(f"Parameter estimation failed: {e}") from e
+
+
+def simulate(
+    tickers: list[str],
     T: float,
     n_steps: int,
     n_paths: int,
     period: str = "1y",
     engine: str = "auto",
 ) -> SimulationResult:
+    """Simulate correlated GBM paths for any number of assets."""
     logger.info(
-        "Starting pipeline for %s (T=%.2f, n_steps=%d, n_paths=%d, engine=%s)",
-        ticker, T, n_steps, n_paths, engine,
+        "Simulating %s (T=%.2f, n_steps=%d, n_paths=%d)",
+        tickers, T, n_steps, n_paths,
     )
 
-    try:
-        tp = estimate_ticker_params(ticker=ticker, period=period)
-    except (TickerNotFoundError, InsufficientDataError) as e:
-        logger.error("Parameter estimation failed for %s: %s", ticker, e)
-        raise SimulationError(f"Failed to estimate parameters for '{ticker}': {e}") from e
+    aligned = fetch_aligned_history(tuple(tickers), period=period)
+    correlation = _correlate(aligned)
+    params = _build_params(tuple(tickers), aligned, correlation, T, n_steps)
 
     try:
-        gbm_params = GBMParams(x0=tp.x0, mu=tp.mu, sigma=tp.sigma, T=T, n_steps=n_steps)
-        selected_engine = create_engine(kind=engine, n_paths=n_paths)
-
-        gbm = GeometricBrownianMotion(gbm_params, engine=selected_engine)
+        gbm = GeometricBrownianMotion(params, engine=engine)
         paths = gbm.simulate_paths(n_paths)
-        metrics = compute_risk_metrics(paths, x0=tp.x0)
     except (GBMParameterError, GBMNumericalError) as e:
-        logger.error("Simulation failed for %s: %s", ticker, e)
-        raise SimulationError(f"Simulation failed for '{ticker}': {e}") from e
+        raise SimulationError(f"Simulation failed: {e}") from e
 
-    logger.info("Pipeline complete for %s", ticker)
-    return SimulationResult(paths=paths, metrics=metrics)
+    logger.info("Simulation complete for %s", tickers)
+    return SimulationResult(paths=paths, params=params)
