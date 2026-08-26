@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from metrics.risk import compute_risk_metrics, RiskMetrics
+from gpu_risk_simulator.metrics.risk import compute_risk_metrics, RiskMetrics
 
 
 @pytest.fixture

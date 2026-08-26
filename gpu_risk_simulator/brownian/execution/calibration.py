@@ -3,7 +3,7 @@
 import time
 import logging
 
-from brownian.execution import HostEngine
+from gpu_risk_simulator.brownian.execution import HostEngine
 
 
 logger = logging.getLogger(__name__)

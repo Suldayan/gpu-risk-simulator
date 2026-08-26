@@ -1,7 +1,7 @@
 import pytest
 
-from brownian.execution import create_engine, HostEngine
-from brownian.execution.device import DeviceEngine
+from gpu_risk_simulator.brownian.execution import create_engine, HostEngine
+from gpu_risk_simulator.brownian.execution.device import DeviceEngine
 
 
 def test_auto_selects_host_below_threshold(monkeypatch):

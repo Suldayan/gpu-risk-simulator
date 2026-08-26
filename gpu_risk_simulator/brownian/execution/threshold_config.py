@@ -1,7 +1,7 @@
 import os
 from functools import lru_cache
 
-from brownian.execution.calibration import calibrate_threshold
+from gpu_risk_simulator.brownian.execution.calibration import calibrate_threshold
 
 
 @lru_cache(maxsize=1)

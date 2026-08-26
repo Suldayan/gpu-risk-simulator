@@ -2,9 +2,9 @@
 
 import os
 
-from brownian.execution.base import ExecutionEngine
-from brownian.execution.host import HostEngine
-from brownian.execution.threshold_config import get_auto_threshold
+from gpu_risk_simulator.brownian.execution.base import ExecutionEngine
+from gpu_risk_simulator.brownian.execution.host import HostEngine
+from gpu_risk_simulator.brownian.execution.threshold_config import get_auto_threshold
 
 __all__ = ["ExecutionEngine", "HostEngine", "create_engine"]
 

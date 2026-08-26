@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
-from market_data.errors import TickerParameterError, TickerNotFoundError, InsufficientDataError
+from gpu_risk_simulator.market_data.errors import TickerParameterError, TickerNotFoundError, InsufficientDataError
 from cachetools import TTLCache
 
 import logging
@@ -11,7 +11,7 @@ import yfinance as yf
 logger = logging.getLogger(__name__)
 
 # cache per (ticker, period) combination, for 5 minutes
-_price_history_cache = TTLCache(maxsize=256, ttl=300)
+price_history_cache = TTLCache(maxsize=256, ttl=300)
 MAX_ATTEMPTS = 3
 DEFAULT_PERIOD = "1y"
 
@@ -33,13 +33,13 @@ class TickerParams:
 def fetch_price_history(ticker: str, period: str = DEFAULT_PERIOD) -> pd.DataFrame:
     cache_key = (ticker, period)
 
-    if cache_key in _price_history_cache:
+    if cache_key in price_history_cache:
         logger.debug("Cache hit for %s (period=%s)", ticker, period)
-        return _price_history_cache[cache_key]
+        return price_history_cache[cache_key]
 
     logger.debug("Cache miss for %s (period=%s) — fetching", ticker, period)
     hist = _download_price_history(ticker, period)
-    _price_history_cache[cache_key] = hist
+    price_history_cache[cache_key] = hist
     return hist
 
 @retry(

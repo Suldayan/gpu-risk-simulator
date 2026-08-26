@@ -1,6 +1,0 @@
-brownian
-logs
-market_data
-metrics
-simulation
-tests

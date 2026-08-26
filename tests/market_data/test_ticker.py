@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import patch
 import pandas as pd
 
-from market_data.ticker import TickerParams, fetch_price_history, compute_gbm_params, estimate_ticker_params
-from market_data.errors import (
+from gpu_risk_simulator.market_data.ticker import TickerParams, fetch_price_history, compute_gbm_params, estimate_ticker_params
+from gpu_risk_simulator.market_data.errors import (
     TickerParameterError,
     TickerNotFoundError,
     InsufficientDataError,

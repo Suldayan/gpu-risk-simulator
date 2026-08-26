@@ -1,6 +1,6 @@
 import pytest
 
-from market_data.ticker import fetch_price_history
+from gpu_risk_simulator.market_data.ticker import fetch_price_history
 
 
 @pytest.mark.integration
