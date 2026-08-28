@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import numpy as np
 
+from gpu_risk_simulator.brownian.errors import GBMParameterError
+
 
 @dataclass(frozen=True)
 class GBMParams:
@@ -11,6 +13,17 @@ class GBMParams:
     correlation: np.ndarray
     T: float
     n_steps: int
+
+    def __post_init__(self) -> None:
+        for ticker, x0, sigma in zip(self.tickers, self.x0, self.sigma):
+            if x0 <= 0:
+                raise GBMParameterError(f"x0 must be positive for {ticker}, got {x0}")
+            if sigma <= 0:
+                raise GBMParameterError(f"sigma must be positive for {ticker}, got {sigma}")
+        if self.T <= 0:
+            raise GBMParameterError(f"T must be positive, got {self.T}")
+        if self.n_steps < 1:
+            raise GBMParameterError(f"n_steps must be >= 1, got {self.n_steps}")
 
 
 def build_gbm_params(

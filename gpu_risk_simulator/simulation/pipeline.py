@@ -52,18 +52,21 @@ def simulate(
     period: str = "1y",
     engine: str = "auto",
 ) -> SimulationResult:
-    """Simulate correlated GBM paths for any number of assets."""
     logger.info(
         "Simulating %s (T=%.2f, n_steps=%d, n_paths=%d)",
         tickers, T, n_steps, n_paths,
     )
 
-    aligned = fetch_aligned_history(tuple(tickers), period=period)
+    try:
+        aligned = fetch_aligned_history(tuple(tickers), period=period)
+    except Exception as e:
+        raise SimulationError(f"Failed to fetch data for {tickers}: {e}") from e
+
     correlation = _correlate(aligned)
     params = _build_params(tuple(tickers), aligned, correlation, T, n_steps)
 
     try:
-        gbm = GeometricBrownianMotion(params, engine=engine)
+        gbm = GeometricBrownianMotion(params, engine=engine, n_paths=n_paths)
         paths = gbm.simulate_paths(n_paths)
     except (GBMParameterError, GBMNumericalError) as e:
         raise SimulationError(f"Simulation failed: {e}") from e

@@ -18,12 +18,13 @@ class GeometricBrownianMotion:
         params: GBMParams,
         engine: ExecutionEngine | str | None = None,
         seed: int | None = None,
+        n_paths: int | None = None,
     ) -> None:
         self.params = params
         self._n_assets = len(params.tickers)
 
         if isinstance(engine, str):
-            self.engine: ExecutionEngine = create_engine(kind=engine, seed=seed)
+            self.engine: ExecutionEngine = create_engine(kind=engine, seed=seed, n_paths=n_paths)
         else:
             self.engine = engine or HostEngine(seed=seed)
 
