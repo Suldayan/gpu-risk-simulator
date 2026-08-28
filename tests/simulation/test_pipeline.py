@@ -9,7 +9,7 @@ from gpu_risk_simulator.simulation.errors import SimulationError
 from gpu_risk_simulator.simulation.pipeline import simulate
 
 
-@patch("simulation.pipeline.estimate_ticker_params")
+@patch("gpu_risk_simulator.simulation.pipeline.estimate_ticker_params")
 def test_simulate_from_ticker_happy_path(mock_estimate):
     mock_estimate.return_value = TickerParams(ticker="AAPL", x0=100.0, mu=0.05, sigma=0.2)
     result = simulate(["AAPL"], T=1.0, n_steps=252, n_paths=50, period="1y")
@@ -19,16 +19,16 @@ def test_simulate_from_ticker_happy_path(mock_estimate):
     assert np.all(result.paths[:, 0] == 100.0)
 
 
-@patch("simulation.pipeline.estimate_ticker_params")
+@patch("gpu_risk_simulator.simulation.pipeline.estimate_ticker_params")
 def test_simulate_from_ticker_passes_params_through(mock_estimate):
     mock_estimate.return_value = TickerParams(ticker="MSFT", x0=250.0, mu=0.1, sigma=0.3)
 
-    simulate_from_ticker("MSFT", T=2.0, n_steps=100, n_paths=10, period="6mo")
+    simulate(["MSFT"], T=2.0, n_steps=100, n_paths=10, period="6mo")
 
     mock_estimate.assert_called_once_with(ticker="MSFT", period="6mo")
 
 
-@patch("simulation.pipeline.estimate_ticker_params")
+@patch("gpu_risk_simulator.simulation.pipeline.estimate_ticker_params")
 def test_simulate_from_ticker_wraps_ticker_not_found(mock_estimate):
     mock_estimate.side_effect = TickerNotFoundError("no data for FAKETICKER")
 
@@ -36,7 +36,7 @@ def test_simulate_from_ticker_wraps_ticker_not_found(mock_estimate):
         simulate(["FAKETICKER"], T=1.0, n_steps=252, n_paths=10)
 
 
-@patch("simulation.pipeline.estimate_ticker_params")
+@patch("gpu_risk_simulator.simulation.pipeline.estimate_ticker_params")
 def test_simulate_from_ticker_wraps_insufficient_data(mock_estimate):
     mock_estimate.side_effect = InsufficientDataError("only 5 data points")
 
@@ -44,7 +44,7 @@ def test_simulate_from_ticker_wraps_insufficient_data(mock_estimate):
         simulate(["AAPL"], T=1.0, n_steps=252, n_paths=10)
 
 
-@patch("simulation.pipeline.estimate_ticker_params")
+@patch("gpu_risk_simulator.simulation.pipeline.estimate_ticker_params")
 def test_simulate_from_ticker_wraps_gbm_parameter_error(mock_estimate):
     # sigma=0 will fail GBMParams validation once it reaches brownian
     mock_estimate.return_value = TickerParams(ticker="AAPL", x0=100.0, mu=0.05, sigma=1e-10)
@@ -54,7 +54,7 @@ def test_simulate_from_ticker_wraps_gbm_parameter_error(mock_estimate):
         simulate(["AAPL"], T=0.0, n_steps=252, n_paths=10)
 
 
-@patch("simulation.pipeline.estimate_ticker_params")
+@patch("gpu_risk_simulator.simulation.pipeline.estimate_ticker_params")
 def test_simulate_from_ticker_preserves_original_exception_as_cause(mock_estimate):
     mock_estimate.side_effect = TickerNotFoundError("no data for FAKETICKER")
 

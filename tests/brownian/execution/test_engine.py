@@ -5,8 +5,8 @@ from gpu_risk_simulator.simulation.pipeline import simulate
 from gpu_risk_simulator.brownian.execution import HostEngine
 
 
-@patch("simulation.pipeline.create_engine")
-@patch("simulation.pipeline.estimate_ticker_params")
+@patch("gpu_risk_simulator.simulation.pipeline.create_engine")
+@patch("gpu_risk_simulator.simulation.pipeline.estimate_ticker_params")
 def test_simulate_from_ticker_passes_engine_choice(mock_estimate, mock_create_engine):
     mock_estimate.return_value = TickerParams(ticker="AAPL", x0=100.0, mu=0.05, sigma=0.2)
     mock_create_engine.return_value = HostEngine(seed=42)

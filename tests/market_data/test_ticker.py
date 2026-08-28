@@ -22,7 +22,7 @@ def test_valid_construction(default_params):
     assert default_params.sigma == 0.2
 
 
-@patch("market_data.ticker.yf.Ticker")
+@patch("gpu_risk_simulator.market_data.ticker.yf.Ticker")
 def test_fetch_returns_history_on_success(mock_ticker):
     df = pd.DataFrame({"Close": [100.0 + i for i in range(35)]})
     mock_ticker.return_value.history.return_value = df
@@ -53,20 +53,20 @@ def test_allows_negative_mu():
         (pd.DataFrame({"Close": [100.0] * 29}), InsufficientDataError),
     ],
 )
-@patch("market_data.ticker.yf.Ticker")
+@patch("gpu_risk_simulator.market_data.ticker.yf.Ticker")
 def test_fetch_raises_on_bad_data(mock_ticker, history, expected_exception):
     mock_ticker.return_value.history.return_value = history
     with pytest.raises(expected_exception):
         fetch_price_history("AAPL")
 
 
-@patch("market_data.ticker.yf.Ticker")
+@patch("gpu_risk_simulator.market_data.ticker.yf.Ticker")
 def test_fetch_succeeds_at_exactly_30_rows(mock_ticker):
     mock_ticker.return_value.history.return_value = pd.DataFrame({"Close": [100.0] * 30})
     result = fetch_price_history("AAPL")
     assert len(result) == 30
 
-@patch("market_data.ticker.yf.Ticker")
+@patch("gpu_risk_simulator.market_data.ticker.yf.Ticker")
 def test_fetch_fails_at_29_rows(mock_ticker):
     mock_ticker.return_value.history.return_value = pd.DataFrame({"Close": [100.0] * 29})
     with pytest.raises(InsufficientDataError):
@@ -79,7 +79,7 @@ def test_compute_gbm_params_raises_on_zero_volatility():
         compute_gbm_params("AAPL", df)
 
 
-@patch("market_data.ticker.yf.Ticker")
+@patch("gpu_risk_simulator.market_data.ticker.yf.Ticker")
 def test_fetch_retries_on_connection_error_then_succeeds(mock_ticker):
     df = pd.DataFrame({"Close": [100.0] * 35})
     mock_ticker.return_value.history.side_effect = [ConnectionError, ConnectionError, df]
@@ -88,7 +88,7 @@ def test_fetch_retries_on_connection_error_then_succeeds(mock_ticker):
     assert mock_ticker.return_value.history.call_count == 3
 
 
-@patch("market_data.ticker.yf.Ticker")
+@patch("gpu_risk_simulator.market_data.ticker.yf.Ticker")
 def test_fetch_does_not_retry_on_ticker_not_found(mock_ticker):
     mock_ticker.return_value.history.return_value = pd.DataFrame()
     with pytest.raises(TickerNotFoundError):
@@ -96,7 +96,7 @@ def test_fetch_does_not_retry_on_ticker_not_found(mock_ticker):
     assert mock_ticker.return_value.history.call_count == 1
 
 
-@patch("market_data.ticker.yf.Ticker")
+@patch("gpu_risk_simulator.market_data.ticker.yf.Ticker")
 def test_fetch_gives_up_after_max_attempts(mock_ticker):
    mock_ticker.return_value.history.side_effect = ConnectionError
    with pytest.raises(ConnectionError):
@@ -104,7 +104,7 @@ def test_fetch_gives_up_after_max_attempts(mock_ticker):
    assert mock_ticker.return_value.history.call_count == 3
 
 
-@patch("market_data.ticker.yf.Ticker")
+@patch("gpu_risk_simulator.market_data.ticker.yf.Ticker")
 def test_fetch_does_not_retry_on_insufficient_data(mock_ticker):
    mock_ticker.return_value.history.return_value = pd.DataFrame({"Close": [100.0] * 10})
    with pytest.raises(InsufficientDataError):
@@ -112,7 +112,7 @@ def test_fetch_does_not_retry_on_insufficient_data(mock_ticker):
    assert mock_ticker.return_value.history.call_count == 1
 
 
-@patch("market_data.ticker.yf.Ticker")
+@patch("gpu_risk_simulator.market_data.ticker.yf.Ticker")
 def test_estimate_ticker_params_end_to_end(mock_ticker):
    prices = [100.0 + (i % 3) for i in range(35)]
    mock_ticker.return_value.history.return_value = pd.DataFrame({"Close": prices})
