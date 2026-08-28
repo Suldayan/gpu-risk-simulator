@@ -9,6 +9,7 @@ class RiskMetrics:
     probability_of_loss: float
     mean_terminal: float
     median_terminal: float
+    max_drawdown: float
 
 
 def compute_risk_metrics(
@@ -23,10 +24,15 @@ def compute_risk_metrics(
     tail_losses = losses[losses >= var]
     cvar = float(tail_losses.mean()) if len(tail_losses) > 0 else var
 
+    peaks = np.maximum.accumulate(paths, axis=1)
+    drawdowns = (paths - peaks) / peaks
+    path_max_drawdowns = drawdowns.min(axis=1)
+
     return RiskMetrics(
         var=var,
         cvar=cvar,
         probability_of_loss=float(np.mean(terminal_values < x0)),
         mean_terminal=float(terminal_values.mean()),
         median_terminal=float(np.median(terminal_values)),
+        max_drawdown=float(path_max_drawdowns.min()),
     )
