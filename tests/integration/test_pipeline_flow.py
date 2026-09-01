@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from gpu_risk_simulator.simulation.pipeline import simulate
+from risk_simulator.simulation.pipeline import simulate
 
 
 @pytest.mark.integration

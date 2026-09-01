@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import numpy as np
 
-from gpu_risk_simulator.brownian.errors import GBMParameterError
+from risk_simulator.brownian.errors import GBMParameterError
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,7 @@ def build_gbm_params(
     T: float,
     n_steps: int,
 ) -> GBMParams:
-    from gpu_risk_simulator.market_data.ticker import annualized_gbm_stats
+    from risk_simulator.market_data.ticker import annualized_gbm_stats
 
     x0s, mus, sigmas = [], [], []
     for ticker in tickers:

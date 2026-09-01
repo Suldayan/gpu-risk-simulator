@@ -3,13 +3,13 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 import pytest
 
-from gpu_risk_simulator.market_data.errors import TickerNotFoundError
-from gpu_risk_simulator.simulation.errors import SimulationError
-from gpu_risk_simulator.simulation.pipeline import simulate
+from risk_simulator.market_data.errors import TickerNotFoundError
+from risk_simulator.simulation.errors import SimulationError
+from risk_simulator.simulation.pipeline import simulate
 
 
-@patch("gpu_risk_simulator.simulation.pipeline.fetch_aligned_history")
-@patch("gpu_risk_simulator.simulation.pipeline.GeometricBrownianMotion")
+@patch("risk_simulator.simulation.pipeline.fetch_aligned_history")
+@patch("risk_simulator.simulation.pipeline.GeometricBrownianMotion")
 def test_simulate_happy_path(mock_gbm_class, mock_fetch):
     # Mock the aligned history DataFrame
     mock_fetch.return_value = MagicMock()
@@ -27,7 +27,7 @@ def test_simulate_happy_path(mock_gbm_class, mock_fetch):
     mock_fetch.assert_called_once()
 
 
-@patch("gpu_risk_simulator.simulation.pipeline.fetch_aligned_history")
+@patch("risk_simulator.simulation.pipeline.fetch_aligned_history")
 def test_simulate_wraps_fetch_errors(mock_fetch):
     mock_fetch.side_effect = TickerNotFoundError("no data for FAKETICKER")
 

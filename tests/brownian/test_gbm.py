@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from gpu_risk_simulator.brownian.errors import GBMParameterError
-from gpu_risk_simulator.brownian.models import GBMParams
-from gpu_risk_simulator.brownian.gbm import GeometricBrownianMotion
+from risk_simulator.brownian.errors import GBMParameterError
+from risk_simulator.brownian.models import GBMParams
+from risk_simulator.brownian.gbm import GeometricBrownianMotion
 
 
 @pytest.fixture

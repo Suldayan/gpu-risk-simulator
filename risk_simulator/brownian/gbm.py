@@ -3,9 +3,9 @@ import time
 import numpy as np
 
 import logging
-from gpu_risk_simulator.brownian.errors import GBMNumericalError
-from gpu_risk_simulator.brownian.execution import ExecutionEngine, HostEngine, create_engine
-from gpu_risk_simulator.brownian.models import GBMParams
+from risk_simulator.brownian.errors import GBMNumericalError
+from risk_simulator.brownian.execution import ExecutionEngine, HostEngine, create_engine
+from risk_simulator.brownian.models import GBMParams
 
 logger = logging.getLogger(__name__)
 

@@ -5,9 +5,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 
 import logging
-from gpu_risk_simulator.market_data.errors import TickerNotFoundError, InsufficientDataError
-from gpu_risk_simulator.market_data.ticker import fetch_price_history
-from gpu_risk_simulator.portfolio.errors import PortfolioError
+from risk_simulator.market_data.errors import TickerNotFoundError, InsufficientDataError
+from risk_simulator.market_data.ticker import fetch_price_history
+from risk_simulator.portfolio.errors import PortfolioError
 
 logger = logging.getLogger(__name__)
 

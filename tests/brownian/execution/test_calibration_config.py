@@ -1,9 +1,9 @@
 import pytest
 
-from gpu_risk_simulator.brownian.execution import create_engine, HostEngine
-from gpu_risk_simulator.brownian.execution.device import DeviceEngine
+from risk_simulator.brownian.execution import create_engine, HostEngine
+from risk_simulator.brownian.execution.device import DeviceEngine
 
-TARGET = "gpu_risk_simulator.brownian.execution.get_auto_threshold"
+TARGET = "risk_simulator.brownian.execution.get_auto_threshold"
 
 
 def test_auto_selects_host_below_threshold(monkeypatch):

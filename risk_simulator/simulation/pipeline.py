@@ -4,11 +4,11 @@ import numpy as np
 import pandas as pd
 
 import logging
-from gpu_risk_simulator.brownian.errors import GBMParameterError, GBMNumericalError
-from gpu_risk_simulator.brownian.gbm import GeometricBrownianMotion
-from gpu_risk_simulator.brownian.models import GBMParams, build_gbm_params
-from gpu_risk_simulator.portfolio.fetcher import fetch_aligned_history
-from gpu_risk_simulator.simulation.errors import SimulationError
+from risk_simulator.brownian.errors import GBMParameterError, GBMNumericalError
+from risk_simulator.brownian.gbm import GeometricBrownianMotion
+from risk_simulator.brownian.models import GBMParams, build_gbm_params
+from risk_simulator.portfolio.fetcher import fetch_aligned_history
+from risk_simulator.simulation.errors import SimulationError
 
 logger = logging.getLogger(__name__)
 

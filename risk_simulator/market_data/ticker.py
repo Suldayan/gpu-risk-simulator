@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
-from gpu_risk_simulator.market_data.errors import TickerParameterError, TickerNotFoundError, InsufficientDataError
+from risk_simulator.market_data.errors import TickerParameterError, TickerNotFoundError, InsufficientDataError
 from cachetools import TTLCache
 
 import logging

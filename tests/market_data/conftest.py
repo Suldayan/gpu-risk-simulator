@@ -1,6 +1,6 @@
 import pytest
 
-from gpu_risk_simulator.market_data.ticker import price_history_cache
+from risk_simulator.market_data.ticker import price_history_cache
 
 
 @pytest.fixture(autouse=True)

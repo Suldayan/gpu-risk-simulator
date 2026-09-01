@@ -4,7 +4,7 @@ import logging
 def setup_logging(level: int = logging.INFO, formatter: logging.Formatter | None = None) -> None:
     """Configure the root logger once, at the application's entry point.
 
-    Domain gpu_risk_simulator should never call this — they only call
+    Domain risk_simulator should never call this — they only call
     `logging.getLogger(__name__)` and emit records. Only the entry point
     (CLI script, API startup, test harness) decides how those records
     are formatted and where they go.
